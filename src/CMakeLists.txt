@@ -8,8 +8,11 @@ find_package(OpenMP REQUIRED)
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${OpenMP_C_FLAGS}")
 
 # Adds compile options for targets in this directory and below.
-add_compile_options(-Wall -pedantic-errors -std=c99)
+add_compile_options(-Wall -pedantic-errors -std=c11)
 
 add_executable(miht main.c
+	miht.c
 )
+
+target_link_libraries(miht m)
 
