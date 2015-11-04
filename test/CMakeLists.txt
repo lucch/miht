@@ -8,13 +8,21 @@ find_package(OpenMP REQUIRED)
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${OpenMP_C_FLAGS}")
 
 # Adds compile options for targets in this directory and below.
-add_compile_options(-Wall -pedantic-errors -std=c99)
+add_compile_options(-Wall -pedantic-errors -std=c11)
 
-add_executable(miht_test main.c
+include_directories(../src)
+
+add_executable(miht_test 
+	main.c
+	../src/ip.c
+	../src/ip.h
+	../src/miht.c
 )
 
 # Passes the required flags to the linker.
 if (UNIX AND NOT APPLE)
 	target_link_libraries(miht_test rt)
 endif ()
+
+target_link_libraries(miht_test m)
 
