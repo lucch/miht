@@ -3,17 +3,12 @@
 
 #include <stdbool.h>
 
-/* TEMPORARY TEST STRUCTURE. */
-struct ip_prefix {
-	int prefix;
-	int suffix;
-	int len;
-	char next_hop;
-};
+#include "ip.h"
 
 struct ptrie_node {
 	bool is_priority;
 	int suffix;
+	int len;  /* Suffix length. */
 	int next_hop;
 	struct ptrie_node *left;
 	struct ptrie_node *right;
