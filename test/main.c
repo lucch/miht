@@ -103,7 +103,7 @@ MU_TEST(insert)
 	struct miht *miht = miht_create(4, 4); 
 
 	for (int i = 0; i < prefixes_len; i++) {
-		miht_insert(miht, miht->root0, miht->root1, prefixes[i]);
+		miht_insert(miht, miht->root1, prefixes[i]);
 	}
 
 	miht_print(miht);
