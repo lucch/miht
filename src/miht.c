@@ -246,6 +246,7 @@ void miht_insert(struct miht *miht, struct ptrie_node *ptminusone,
 
 		int p = prefix_key(k, prefix);
 		/* Find the index i in B+ tree node. */
+		/* TODO: Perform a binary search! */
 		int i = 0;
 		for (; i < bplus->num_indices && p >= bplus->indices[i + 1]; i++);
 
@@ -289,6 +290,123 @@ void miht_insert(struct miht *miht, struct ptrie_node *ptminusone,
 	} else {
 		/* Insert into PT[-1]. */
 		ptrie_insert(&ptminusone, prefix.prefix, prefix.len, prefix.next_hop);
+	}
+}
+
+const char DEFAULT_ROUTE = 'X';
+
+char ptrie_lookup(const struct ptrie_node *ptrie, int suffix, int len)
+{
+	char next_hop = DEFAULT_ROUTE; 
+	int max_len = 0;
+	int level = 1;
+
+	while (len > 0 && ptrie != NULL) {
+		if (ptrie_prefix_match(ptrie->suffix, ptrie->len, suffix, len)) {
+			if (ptrie->is_priority) {
+				next_hop = ptrie->next_hop;
+				break;
+			}
+			if (ptrie->len > max_len) {
+				max_len = ptrie->len;
+				next_hop = ptrie->next_hop; 
+			}
+		}
+		ptrie = ptrie_check_bit(level++, suffix, len--) ?
+			ptrie->right : ptrie->left;
+	}
+
+	return next_hop;
+}
+
+/*
+ * Assuming addr is 8 bits.
+ */
+int prefix_key_addr(int k, int addr)
+{
+	return (addr & 0xf0) >> 4;
+}
+
+int suffix_key_addr(int k, int addr)
+{
+	return addr & 0xf;
+}
+
+char miht_lookup(const struct miht *miht, const struct ptrie_node *ptminusone,
+		const struct bplus_node *bplus, int addr)
+{
+	char next_hop = DEFAULT_ROUTE;
+	int k = miht->k;
+	int p = prefix_key_addr(k, addr);
+	while (!bplus->is_leaf) {
+		// TODO: Binary search!
+		int i = 0;
+		for (; i < bplus->num_indices && p >= bplus->indices[i + 1]; i++);
+		bplus = bplus->children[i];
+	}
+
+	// TODO: Binary search!
+	int i = 0;
+	for (; i < bplus->num_indices && p >= bplus->indices[i + 1]; i++);
+	if (p == bplus->indices[i]) {
+		next_hop = ptrie_lookup(bplus->data[i], suffix_key_addr(k, addr), 4);
+		if (next_hop != DEFAULT_ROUTE)
+			return next_hop;
+	}
+
+	return ptrie_lookup(ptminusone, addr, 8);
+}
+
+void ptrie_print(const struct ptrie_node *ptrie)
+{
+	if (ptrie != NULL) {
+		char str[ptrie->len + 1];
+		byte_to_binary(ptrie->suffix, str, ptrie->len);
+		printf("(%s*, %c)\n", str, ptrie->next_hop);
+		if (ptrie->left != NULL) {
+			printf("L");
+			ptrie_print(ptrie->left);
+		}
+		if (ptrie->right != NULL) {
+			printf("R");
+			ptrie_print(ptrie->right);
+		}
+	}
+}
+
+void miht_print(const struct miht *miht)
+{
+	/* B+ Tree */
+	const struct bplus_node *bplus = miht->root1;
+
+	printf("B+ Tree\n");
+	printf("-------\n");
+	for (int i = 1; i <= bplus->num_indices; i++)
+		printf("|%d", bplus->indices[i]); 
+	printf("|\n\n");
+
+	for (int i = 0; i <= bplus->num_indices; i++) {
+		struct bplus_node *tmp = bplus->children[i];
+		for (int i = 1; i <= tmp->num_indices; i++)
+			printf("|%d", tmp->indices[i]); 
+		printf("|   ");
+	}
+
+	printf("\n");
+
+	printf("\n\nPriority Tries\n");
+	printf("------------------\n");
+	printf("PT[-1]\n");
+	ptrie_print(miht->root0);
+	printf("\n");
+	for (int i = 0; i <= bplus->num_indices; i++) {
+		struct bplus_node *tmp = bplus->children[i];
+		for (int j = 1; j <= tmp->num_indices; j++) {
+			struct ptrie_node *ptrie = tmp->data[j];
+			printf("PT[%d]\n", j + 3 * i);
+			ptrie_print(ptrie);
+			printf("\n");
+		}
 	}
 }
 

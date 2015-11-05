@@ -105,6 +105,18 @@ MU_TEST(insert)
 	for (int i = 0; i < prefixes_len; i++) {
 		miht_insert(miht, miht->root0, miht->root1, prefixes[i]);
 	}
+
+	miht_print(miht);
+
+//	char next_hop = miht_lookup(miht, miht->root0, miht->root1, 0b10001000);
+//	printf("next_hop = %c\n", next_hop);
+////	mu_check(next_hop == 'O');
+//	next_hop = miht_lookup(miht, miht->root0, miht->root1, 0b10001111);
+//	printf("next_hop = %c\n", next_hop);
+////	mu_check(next_hop == 'O');
+//	next_hop = miht_lookup(miht, miht->root0, miht->root1, 0b10001101);
+//	printf("next_hop = %c\n", next_hop);
+////	mu_check(next_hop == 'O');
 }
 
 MU_TEST_SUITE(test_suite) {
