@@ -337,7 +337,7 @@ char ptrie_lookup(const struct ptrie_node *ptrie, int suffix, int len)
 {
 	char next_hop = DEFAULT_ROUTE; 
 	int max_len = 0;
-	int level = 1;
+	int level = 0;
 
 	while (len > 0 && ptrie != NULL) {
 		if (ptrie_prefix_match(ptrie->suffix, ptrie->len, suffix, len)) {
@@ -350,8 +350,9 @@ char ptrie_lookup(const struct ptrie_node *ptrie, int suffix, int len)
 				next_hop = ptrie->next_hop; 
 			}
 		}
-		ptrie = ptrie_check_bit(level++, suffix, len--) ?
+		ptrie = ptrie_check_bit(level + 1, suffix, len - level) ?
 			ptrie->right : ptrie->left;
+		level++;
 	}
 
 	return next_hop;
