@@ -108,15 +108,18 @@ MU_TEST(insert)
 
 	miht_print(miht);
 
-//	char next_hop = miht_lookup(miht, miht->root0, miht->root1, 0b10001000);
+	char next_hop = miht_lookup(miht, 0b10001000);
 //	printf("next_hop = %c\n", next_hop);
-////	mu_check(next_hop == 'O');
-//	next_hop = miht_lookup(miht, miht->root0, miht->root1, 0b10001111);
+	mu_check(next_hop == 'O');
+	next_hop = miht_lookup(miht, 0b10001111);
 //	printf("next_hop = %c\n", next_hop);
-////	mu_check(next_hop == 'O');
-//	next_hop = miht_lookup(miht, miht->root0, miht->root1, 0b10001101);
+	mu_check(next_hop == 'I');
+	next_hop = miht_lookup(miht, 0b10001101);
 //	printf("next_hop = %c\n", next_hop);
-////	mu_check(next_hop == 'O');
+	mu_check(next_hop == 'O');
+	next_hop = miht_lookup(miht, 0b01111111);
+//	printf("next_hop = %c\n", next_hop);
+	mu_check(next_hop == 'G');
 }
 
 MU_TEST_SUITE(test_suite) {
