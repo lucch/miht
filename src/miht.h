@@ -38,11 +38,10 @@ struct miht {
  */
 struct miht *miht_create(int k, int m);
 
-void miht_insert(struct miht *miht, struct ptrie_node *ptminusone,
-		struct bplus_node *bplus, struct ip_prefix prefix);
+void miht_insert(struct miht *miht, struct bplus_node *bplus,
+		struct ip_prefix prefix);
 
-char miht_lookup(const struct miht *miht, const struct ptrie_node *ptminusone,
-		const struct bplus_node *bplus, int addr);
+char miht_lookup(const struct miht *miht, int addr);
 
 void miht_print(const struct miht *miht);
 

@@ -62,7 +62,8 @@ struct miht *miht_create(int k, int m)
 	assert(miht != NULL);
 	miht->k = k;
 	miht->m = m;
-	miht->root0 = ptrie_node();
+//	miht->root0 = ptrie_node();
+	miht->root0 = NULL;
 	miht->root1 = bplus_node(m, MIHT_EXTERNAL);
 
 	return miht;
@@ -92,6 +93,42 @@ int cmp_increasing(const void *index1, const void *index2)
 		return 1;
 }
 
+void quicksort(int *a, struct ptrie_node **ptries, int n)
+{
+	int i, j, p, t;
+	struct ptrie_node *t_ptrie;
+	if (n < 2)
+		return;
+	p = a[n / 2];
+	for (i = 0, j = n - 1;; i++, j--) {
+		while (a[i] < p)
+			i++;
+		while (p < a[j])
+			j--;
+		if (i >= j)
+			break;
+		/* Swap indices. */
+		t = a[i];
+		a[i] = a[j];
+		a[j] = t;
+		/* Swap ptries. */
+		t_ptrie = ptries[i];
+		ptries[i] = ptries[j];
+		ptries[j] = t_ptrie;
+	}
+	quicksort(a, ptries, i);
+	quicksort(a + i, ptries + i, n - i);
+}
+
+/*
+ * node must be an EXTERNAL_NODE (leaf).
+ */
+void sort(struct bplus_node *node, int count)
+{
+	if (node->is_leaf)
+		quicksort(&node->indices[1], &node->data[1], count);
+}
+
 void miht_node_split(int m, struct bplus_node *x, int y_pos, struct bplus_node *y,
 		int pkey)
 {
@@ -119,7 +156,7 @@ void miht_node_split(int m, struct bplus_node *x, int y_pos, struct bplus_node *
 				&y->data[g + 1],
 				(m - g - 1) * sizeof(struct ptrie_node *));
 			z->indices[m - g] = pkey;
-			qsort(&z->indices[1], m - g, sizeof(int), cmp_increasing);
+			sort(z, m - g);
 		} else {
 			memmove(&z->indices[1],
 				&y->indices[g],
@@ -128,7 +165,7 @@ void miht_node_split(int m, struct bplus_node *x, int y_pos, struct bplus_node *
 				&y->data[g],
 				(m - g) * sizeof(struct ptrie_node *));
 			y->indices[g] = pkey;
-			qsort(&y->indices[1], g, sizeof(int), cmp_increasing);
+			sort(y, g);
 		}
 		y->num_indices = g;
 		z->num_indices = m - g;
@@ -185,7 +222,7 @@ struct ptrie_node *ptrie_insert_prime(struct ptrie_node *ptrie, int suffix,
 		bool match = ptrie_prefix_match(ptrie->suffix, node_len,
 				suffix, len);
 		if (len <= node_len || (len > node_len && !match)) {
-			if (ptrie_check_bit(level, suffix, len)) {
+			if (ptrie_check_bit(level + 1, suffix, len)) {
 				ptrie->right = ptrie_insert_prime(ptrie->right,
 						suffix, len, next_hop, level + 1);
 			} else {
@@ -194,13 +231,14 @@ struct ptrie_node *ptrie_insert_prime(struct ptrie_node *ptrie, int suffix,
 			}
 		} else {  /* Replace current node. */
 			struct ptrie_node *cur_node = ptrie;
-			cur_node->is_priority = cur_node->len != level;
+			cur_node->is_priority = cur_node->len != (level + 1);
 			ptrie = ptrie_node();
-			ptrie->is_priority = len != (level - 1);
+			ptrie->is_priority = len != level;
 			ptrie->suffix = suffix;
 			ptrie->len = len;
 			ptrie->next_hop = next_hop;
-			if (ptrie_check_bit(level, cur_node->suffix, cur_node->len)) {
+			if (ptrie_check_bit(level + 1, cur_node->suffix,
+						cur_node->len)) {
 				ptrie->right = cur_node;
 			} else {
 				ptrie->left = cur_node;
@@ -224,12 +262,12 @@ void ptrie_insert(struct ptrie_node **ptrie, int suffix, int len, char next_hop)
 		(*ptrie)->len = len;
 		(*ptrie)->next_hop = next_hop;
 	} else {
-		*ptrie = ptrie_insert_prime(*ptrie, suffix, len, next_hop, 1);
+		*ptrie = ptrie_insert_prime(*ptrie, suffix, len, next_hop, 0);
 	}
 }
 
-void miht_insert(struct miht *miht, struct ptrie_node *ptminusone,
-		struct bplus_node *bplus, struct ip_prefix prefix)
+void miht_insert(struct miht *miht, struct bplus_node *bplus,
+		struct ip_prefix prefix)
 {
 	int k = miht->k;
 	int m = miht->m;
@@ -285,11 +323,11 @@ void miht_insert(struct miht *miht, struct ptrie_node *ptminusone,
 						i = i + 1;
 				}
 			}
-			miht_insert(miht, ptminusone, bplus->children[i], prefix);
+			miht_insert(miht, bplus->children[i], prefix);
 		}
 	} else {
 		/* Insert into PT[-1]. */
-		ptrie_insert(&ptminusone, prefix.prefix, prefix.len, prefix.next_hop);
+		ptrie_insert(&miht->root0, prefix.prefix, prefix.len, prefix.next_hop);
 	}
 }
 
@@ -332,10 +370,11 @@ int suffix_key_addr(int k, int addr)
 	return addr & 0xf;
 }
 
-char miht_lookup(const struct miht *miht, const struct ptrie_node *ptminusone,
-		const struct bplus_node *bplus, int addr)
+char miht_lookup(const struct miht *miht, int addr)
 {
 	char next_hop = DEFAULT_ROUTE;
+	const struct ptrie_node *ptminusone = miht->root0;
+	const struct bplus_node *bplus = miht->root1;
 	int k = miht->k;
 	int p = prefix_key_addr(k, addr);
 	while (!bplus->is_leaf) {
@@ -362,7 +401,8 @@ void ptrie_print(const struct ptrie_node *ptrie)
 	if (ptrie != NULL) {
 		char str[ptrie->len + 1];
 		byte_to_binary(ptrie->suffix, str, ptrie->len);
-		printf("(%s*, %c)\n", str, ptrie->next_hop);
+		printf("(%s*, %c)%c\n", str, ptrie->next_hop,
+				ptrie->is_priority ? 'P' : '\0');
 		if (ptrie->left != NULL) {
 			printf("L");
 			ptrie_print(ptrie->left);
