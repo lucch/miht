@@ -5,7 +5,6 @@ miht
 # Directories
 build/
 bin/
-data/
 
 # Files
 .o

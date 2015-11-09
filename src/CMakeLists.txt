@@ -15,6 +15,7 @@ add_executable(miht
 	ip.c
 	ip.h
 	miht.c
+	prettyprint.c
 )
 
 target_link_libraries(miht m)
