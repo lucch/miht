@@ -7,92 +7,77 @@ int prefixes_len = 15;
 
 struct ip_prefix prefixes[] = {
 	{  /* P1 */
-		.prefix   = 1,
-		.suffix   = 0,
+		.prefix   = 0b00010,
 		.len      = 5,
 		.next_hop = 'A'
 	},
 	{  /* P2 */
-		.prefix   = 1,
-		.suffix   = 1,
+		.prefix   = 0b00011,
 		.len      = 5,
 		.next_hop = 'B'
 	},
 	{  /* P3 */
-		.prefix   = 3,
-		.suffix   = 1,
+		.prefix   = 0b00111,
 		.len      = 5,
 		.next_hop = 'C'
 	},
 	{  /* P4 */
-		.prefix   = 3,
-		.suffix   = 6,
+		.prefix   = 0b0011110,
 		.len      = 7,
 		.next_hop = 'D'
 	},
 	{  /* P5 */
-		.prefix   = 5,
-		.suffix   = 2,
+		.prefix   = 0b010110,
 		.len      = 6,
 		.next_hop = 'E'
 	},
 	{  /* P6 */
-		.prefix   = 7,
-		.suffix   = 0,
+		.prefix   = 0b011100,
 		.len      = 6,
 		.next_hop = 'F'
 	},
 	{  /* P7 */
-		.prefix   = 1,
-		.suffix   = 0,  /* Unused. */
+		.prefix   = 0b01,
 		.len      = 2,
 		.next_hop = 'G'
 	},
 	{  /* P8 */
-		.prefix   = 9,
-		.suffix   = 1,
+		.prefix   = 0b100101,
 		.len      = 6,
 		.next_hop = 'H'
 	},
 	{  /* P9 */
-		.prefix   = 8,
-		.suffix   = 7,
+		.prefix   = 0b1000111,
 		.len      = 7,
 		.next_hop = 'I'
 	},
 	{  /* P10 */
-		.prefix   = 9,
-		.suffix   = 0,
+		.prefix   = 0b10010,
 		.len      = 5,
 		.next_hop = 'J'
 	},
 	{  /* P11 */
-		.prefix   = 2,
-		.suffix   = 0,  /* Unused. */
+		.prefix   = 0b010,
 		.len      = 3,
 		.next_hop = 'K'
 	},
 	{  /* P12 */
-		.prefix   = 6,
-		.suffix   = 4,
+		.prefix   = 0b0110100,
 		.len      = 7,
 		.next_hop = 'L'
 	},
 	{  /* P13 */
-		.prefix   = 8,
-		.suffix   = 0,
+		.prefix   = 0b100000,
 		.len      = 6,
 		.next_hop = 'M'
 	},
 	{  /* P14 */
-		.prefix   = 2,
-		.suffix   = 3,
+		.prefix   = 0b001011,
 		.len      = 6,
 		.next_hop = 'N'
 	},
 	{  /* P15 */
-		.prefix   = 8,
-		.suffix   = 1,
+		.prefix   = 0b10001,
 		.len      = 5,
 		.next_hop = 'O'
 	},
@@ -106,18 +91,19 @@ MU_TEST(insert)
 		miht_insert(miht, miht->root1, prefixes[i]);
 	}
 
-	miht_print(miht);
+//	miht_print(miht);
 
-	char next_hop = miht_lookup(miht, 0b10001000);
+	int next_hop;
+	miht_lookup(miht, 0b10001000, 8, &next_hop);
 //	printf("next_hop = %c\n", next_hop);
 	mu_check(next_hop == 'O');
-	next_hop = miht_lookup(miht, 0b10001111);
+	miht_lookup(miht, 0b10001111, 8, &next_hop);
 //	printf("next_hop = %c\n", next_hop);
 	mu_check(next_hop == 'I');
-	next_hop = miht_lookup(miht, 0b10001101);
+	miht_lookup(miht, 0b10001101, 8, &next_hop);
 //	printf("next_hop = %c\n", next_hop);
 	mu_check(next_hop == 'O');
-	next_hop = miht_lookup(miht, 0b01111111);
+	miht_lookup(miht, 0b01111111, 8, &next_hop);
 //	printf("next_hop = %c\n", next_hop);
 	mu_check(next_hop == 'G');
 }

@@ -3,8 +3,10 @@
  */
 
 #include <assert.h>
+#include <inttypes.h>
 #include <limits.h>
 #include <math.h>
+#include <stdint.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -69,16 +71,17 @@ struct miht *miht_create(int k, int m)
 	return miht;
 }
 
-int prefix_key(int k, struct ip_prefix prefix)
+int prefix_key(int k, int p, int len)
 {
-	// TODO: Extract first k bits of prefix.
-	return prefix.prefix;
+	return len > k ? p >> (len - k) : p;
 }
 
-int suffix(int k, struct ip_prefix prefix)
+/*
+ * Assumes len > k.
+ */
+int suffix(int k, int p, int len)
 {
-	// TODO: Extract last len(prefix) - k bits of prefix.
-	return prefix.suffix;
+	return p & ~(0xffffffff << (len - k));
 }
 
 int cmp_increasing(const void *index1, const void *index2)
@@ -208,6 +211,7 @@ bool ptrie_check_bit(int pos, int suffix, int len)
 	return suffix & (1 << (len - pos));
 }
 
+// TODO: Reimplement iteratively!
 struct ptrie_node *ptrie_insert_prime(struct ptrie_node *ptrie, int suffix,
 		int len, char next_hop, int level)
 {
@@ -251,9 +255,9 @@ struct ptrie_node *ptrie_insert_prime(struct ptrie_node *ptrie, int suffix,
 
 void ptrie_insert(struct ptrie_node **ptrie, int suffix, int len, char next_hop)
 {
-	char str[len + 1];
-	byte_to_binary(suffix, str, len);
-	printf("(%s*, %c)\n", str, next_hop);
+//	char str[len + 1];
+//	byte_to_binary(suffix, str, len);
+//	printf("(%s*, %c)\n", str, next_hop);
 
 	if (*ptrie == NULL) {
 		*ptrie = ptrie_node();
@@ -278,11 +282,11 @@ void miht_insert(struct miht *miht, struct bplus_node *bplus,
 			new_root->children[0] = miht->root1;
 			miht->root1 = new_root;
 			miht_node_split(m, miht->root1, 0,
-				miht->root1->children[0], prefix_key(k, prefix));
+				miht->root1->children[0], prefix_key(k, prefix.prefix, prefix.len));
 			bplus = miht->root1;
 		}
 
-		int p = prefix_key(k, prefix);
+		int p = prefix_key(k, prefix.prefix, prefix.len);
 		/* Find the index i in B+ tree node. */
 		/* TODO: Perform a binary search! */
 		int i = 0;
@@ -304,7 +308,7 @@ void miht_insert(struct miht *miht, struct bplus_node *bplus,
 				bplus->data[i] = NULL;
 				bplus->num_indices = bplus->num_indices + 1;
 			}
-			ptrie_insert(&bplus->data[i], suffix(k, prefix),
+			ptrie_insert(&bplus->data[i], suffix(k, prefix.prefix, prefix.len),
 					prefix.len - k, prefix.next_hop);
 		} else {  /* Internal node. */
 			struct bplus_node *child = bplus->children[i];
@@ -331,6 +335,28 @@ void miht_insert(struct miht *miht, struct bplus_node *bplus,
 	}
 }
 
+void miht_load(struct miht *miht, FILE *pfxs)
+{
+	if (pfxs == NULL) {
+		fprintf(stderr, "Couldn't load prefixes. File is NULL.\n");
+		exit(1);
+	}
+
+	int rc;
+	uint8_t a0, b0, c0, d0, len;
+	uint8_t a1, b1, c1, d1;
+	while((rc = fscanf(pfxs, "%"SCNu8 ".%"SCNu8 ".%"SCNu8 ".%"SCNu8 "/%"SCNu8
+					" %"SCNu8 ".%"SCNu8 ".%"SCNu8 ".%"SCNu8,
+					&a0, &b0, &c0, &d0, &len,
+					&a1, &b1, &c1, &d1)) == 9) {
+		uint32_t next_hop = ip_addr(a1, b1, c1, d1);
+		struct ip_prefix pfx = ip_prefix(a0, b0, c0, d0, len, next_hop);
+
+		miht_insert(miht, miht->root1, pfx);
+	}
+}
+
+// TODO: Program a way to set the default route.
 const char DEFAULT_ROUTE = 'X';
 
 char ptrie_lookup(const struct ptrie_node *ptrie, int suffix, int len)
@@ -358,26 +384,13 @@ char ptrie_lookup(const struct ptrie_node *ptrie, int suffix, int len)
 	return next_hop;
 }
 
-/*
- * Assuming addr is 8 bits.
- */
-int prefix_key_addr(int k, int addr)
+bool miht_lookup(const struct miht *miht, int addr, int len, int *nhop)
 {
-	return (addr & 0xf0) >> 4;
-}
-
-int suffix_key_addr(int k, int addr)
-{
-	return addr & 0xf;
-}
-
-char miht_lookup(const struct miht *miht, int addr)
-{
-	char next_hop = DEFAULT_ROUTE;
+	int next_hop = DEFAULT_ROUTE;
 	const struct ptrie_node *ptminusone = miht->root0;
 	const struct bplus_node *bplus = miht->root1;
 	int k = miht->k;
-	int p = prefix_key_addr(k, addr);
+	int p = prefix_key(k, addr, len);
 	while (!bplus->is_leaf) {
 		// TODO: Binary search!
 		int i = 0;
@@ -389,12 +402,15 @@ char miht_lookup(const struct miht *miht, int addr)
 	int i = 0;
 	for (; i < bplus->num_indices && p >= bplus->indices[i + 1]; i++);
 	if (p == bplus->indices[i]) {
-		next_hop = ptrie_lookup(bplus->data[i], suffix_key_addr(k, addr), 4);
-		if (next_hop != DEFAULT_ROUTE)
-			return next_hop;
+		next_hop = ptrie_lookup(bplus->data[i], suffix(k, addr, len), len - k);
+		if (next_hop != DEFAULT_ROUTE) {
+			*nhop = next_hop;
+			return true;
+		}
 	}
 
-	return ptrie_lookup(ptminusone, addr, 8);
+	*nhop = ptrie_lookup(ptminusone, addr, len);
+	return true;
 }
 
 void ptrie_print(const struct ptrie_node *ptrie)
