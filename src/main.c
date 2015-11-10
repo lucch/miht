@@ -271,7 +271,7 @@ int main(int argc, char *argv[])
 
 	fwdtbl *fw_tbl = NULL;
 
-	allocate_forwarding_table(argc, argv, &fw_tbl);  /* Prefixes distrib. */
+	allocate_forwarding_table(argc, argv, &fw_tbl);
 	initialize_forwarding_table(fw_tbl, argc, argv);  /* Load prefixes. */
 	run(fw_tbl, argc, argv);  /* Dry-run only. */
 
