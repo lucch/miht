@@ -17,6 +17,8 @@ enum miht_node_type {
 	MIHT_INTERNAL, MIHT_EXTERNAL
 };
 
+int default_route = 0;
+
 struct ptrie_node *ptrie_node()
 {
 	struct ptrie_node *ptrie_node = malloc(sizeof(struct ptrie_node));
@@ -73,7 +75,7 @@ struct miht *miht_create(int k, int m)
 
 int prefix_key(int k, int p, int len)
 {
-	return len > k ? p >> (len - k) : p;
+	return len > k ? ((unsigned int)p) >> (len - k) : p;
 }
 
 /*
@@ -128,29 +130,32 @@ void quicksort(int *a, struct ptrie_node **ptries, int n)
  */
 void sort(struct bplus_node *node, int count)
 {
+	assert(node->is_leaf);
 	if (node->is_leaf)
 		quicksort(&node->indices[1], &node->data[1], count);
 }
 
 void miht_node_split(int m, struct bplus_node *x, int y_pos, struct bplus_node *y,
-		int pkey)
+		int pkey, struct miht *miht)
 {
 	struct bplus_node *z = y->is_leaf ? bplus_node(m, MIHT_EXTERNAL) :
 		bplus_node(m, MIHT_INTERNAL);
 
 	int count = x->num_indices - y_pos;
 	if (count > 0) {  /* x is always an internal node. */
-		memmove(&x->indices[y_pos + 1],
-			&x->indices[y_pos + 2],
+		assert(!x->is_leaf);
+		memmove(&x->indices[y_pos + 2],
+			&x->indices[y_pos + 1],
 			count * sizeof(int));
-		memmove(&x->children[y_pos + 1],
-			&x->children[y_pos + 2],
-			count * sizeof(struct ptrie_node *));
+		memmove(&x->children[y_pos + 2],
+			&x->children[y_pos + 1],
+			count * sizeof(struct bplus_node *));
 	}
 	x->children[y_pos + 1] = z;
 	x->num_indices += 1;
 	int g = ceil(m / 2.0);
 	if (y->is_leaf) {
+		assert(z->is_leaf);
 		if (pkey >= y->indices[g]) {
 			memmove(&z->indices[1],
 				&y->indices[g + 1],
@@ -174,13 +179,15 @@ void miht_node_split(int m, struct bplus_node *x, int y_pos, struct bplus_node *
 		z->num_indices = m - g;
 		x->indices[y_pos + 1] = z->indices[1];
 	} else {
+		// TODO: Move line below to memmove children...
+		assert(!z->is_leaf && !y->is_leaf);
 		z->children[0] = y->children[g];
 		memmove(&z->indices[1],
 			&y->indices[g + 1],
 			(m - g - 1) * sizeof(int));
 		memmove(&z->children[1],
 			&y->children[g + 1],
-			(m - g - 1) * sizeof(struct ptrie_node *));
+			(m - g - 1) * sizeof(struct bplus_node *));
 		y->num_indices = g - 1;
 		z->num_indices = m - g - 1;
 		x->indices[y_pos + 1] = y->indices[g];
@@ -213,7 +220,7 @@ bool ptrie_check_bit(int pos, int suffix, int len)
 
 // TODO: Reimplement iteratively!
 struct ptrie_node *ptrie_insert_prime(struct ptrie_node *ptrie, int suffix,
-		int len, char next_hop, int level)
+		int len, int next_hop, int level)
 {
 	if (ptrie == NULL) {
 		ptrie = ptrie_node();
@@ -225,7 +232,10 @@ struct ptrie_node *ptrie_insert_prime(struct ptrie_node *ptrie, int suffix,
 		int node_len = ptrie->len;
 		bool match = ptrie_prefix_match(ptrie->suffix, node_len,
 				suffix, len);
-		if (len <= node_len || (len > node_len && !match)) {
+		if (len == node_len && match) {  /* Update */
+			assert(ptrie->suffix == suffix);
+			ptrie->next_hop = next_hop;
+		} else if (len <= node_len || (len > node_len && !match)) {
 			if (ptrie_check_bit(level + 1, suffix, len)) {
 				ptrie->right = ptrie_insert_prime(ptrie->right,
 						suffix, len, next_hop, level + 1);
@@ -253,12 +263,8 @@ struct ptrie_node *ptrie_insert_prime(struct ptrie_node *ptrie, int suffix,
 	return ptrie;
 }
 
-void ptrie_insert(struct ptrie_node **ptrie, int suffix, int len, char next_hop)
+void ptrie_insert(struct ptrie_node **ptrie, int suffix, int len, int next_hop)
 {
-//	char str[len + 1];
-//	byte_to_binary(suffix, str, len);
-//	printf("(%s*, %c)\n", str, next_hop);
-
 	if (*ptrie == NULL) {
 		*ptrie = ptrie_node();
 		(*ptrie)->is_priority = true;  /* Root is always a priority node. */
@@ -273,6 +279,11 @@ void ptrie_insert(struct ptrie_node **ptrie, int suffix, int len, char next_hop)
 void miht_insert(struct miht *miht, struct bplus_node *bplus,
 		struct ip_prefix prefix)
 {
+	if (prefix.len == 0) {
+		default_route = prefix.next_hop;
+		return;
+	}
+
 	int k = miht->k;
 	int m = miht->m;
 
@@ -282,7 +293,7 @@ void miht_insert(struct miht *miht, struct bplus_node *bplus,
 			new_root->children[0] = miht->root1;
 			miht->root1 = new_root;
 			miht_node_split(m, miht->root1, 0,
-				miht->root1->children[0], prefix_key(k, prefix.prefix, prefix.len));
+				miht->root1->children[0], prefix_key(k, prefix.prefix, prefix.len), miht);
 			bplus = miht->root1;
 		}
 
@@ -322,7 +333,7 @@ void miht_insert(struct miht *miht, struct bplus_node *bplus,
 				}
 				if ((child->is_leaf && !prefix_exists) ||
 						!child->is_leaf) {
-					miht_node_split(miht->m, bplus, i, child, p);
+					miht_node_split(miht->m, bplus, i, child, p, miht);
 					if (p >= bplus->indices[i + 1])
 						i = i + 1;
 				}
@@ -356,12 +367,9 @@ void miht_load(struct miht *miht, FILE *pfxs)
 	}
 }
 
-// TODO: Program a way to set the default route.
-const char DEFAULT_ROUTE = 'X';
-
-char ptrie_lookup(const struct ptrie_node *ptrie, int suffix, int len)
+int ptrie_lookup(const struct ptrie_node *ptrie, int suffix, int len)
 {
-	char next_hop = DEFAULT_ROUTE; 
+	int next_hop = default_route; 
 	int max_len = 0;
 	int level = 0;
 
@@ -386,7 +394,7 @@ char ptrie_lookup(const struct ptrie_node *ptrie, int suffix, int len)
 
 bool miht_lookup(const struct miht *miht, int addr, int len, int *nhop)
 {
-	int next_hop = DEFAULT_ROUTE;
+	int next_hop = default_route;
 	const struct ptrie_node *ptminusone = miht->root0;
 	const struct bplus_node *bplus = miht->root1;
 	int k = miht->k;
@@ -403,7 +411,7 @@ bool miht_lookup(const struct miht *miht, int addr, int len, int *nhop)
 	for (; i < bplus->num_indices && p >= bplus->indices[i + 1]; i++);
 	if (p == bplus->indices[i]) {
 		next_hop = ptrie_lookup(bplus->data[i], suffix(k, addr, len), len - k);
-		if (next_hop != DEFAULT_ROUTE) {
+		if (next_hop != default_route) {
 			*nhop = next_hop;
 			return true;
 		}
@@ -418,7 +426,7 @@ void ptrie_print(const struct ptrie_node *ptrie)
 	if (ptrie != NULL) {
 		char str[ptrie->len + 1];
 		byte_to_binary(ptrie->suffix, str, ptrie->len);
-		printf("(%s*, %c)%c\n", str, ptrie->next_hop,
+		printf("(%s*, %d)%c\n", str, ptrie->next_hop,
 				ptrie->is_priority ? 'P' : '\0');
 		if (ptrie->left != NULL) {
 			printf("L");
@@ -460,7 +468,7 @@ void miht_print(const struct miht *miht)
 		struct bplus_node *tmp = bplus->children[i];
 		for (int j = 1; j <= tmp->num_indices; j++) {
 			struct ptrie_node *ptrie = tmp->data[j];
-			printf("PT[%d]\n", j + 3 * i);
+			printf("PT[%d]\n", j + (miht->m - 1) * i);
 			ptrie_print(ptrie);
 			printf("\n");
 		}
