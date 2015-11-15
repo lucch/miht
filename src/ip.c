@@ -10,7 +10,7 @@ struct ip_prefix ip_prefix(uint8_t a, uint8_t b, uint8_t c, uint8_t d,
 
 	//pfx.prefix = (a << 24 | b << 16 | c << 8 | d) &
 	//	(0xffffffff << (32 - len));
-	pfx.prefix = (a << 24 | b << 16 | c << 8 | d) >> (32 - len);
+	pfx.prefix = (unsigned int)(a << 24 | b << 16 | c << 8 | d) >> (32 - len);
 	pfx.len = len;
 	pfx.next_hop = next_hop;
 
@@ -21,7 +21,7 @@ struct ip_prefix ip_prefix(uint8_t a, uint8_t b, uint8_t c, uint8_t d,
 
 uint32_t ip_addr(uint8_t a, uint8_t b, uint8_t c, uint8_t d)
 {
-	return (uint32_t)a << 24 | b << 16 | c << 8 | d;
+	return a << 24 | b << 16 | c << 8 | d;
 }
 
 bool is_prefix_valid(const struct ip_prefix *pfx)

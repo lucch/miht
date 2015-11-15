@@ -9,7 +9,7 @@ struct ptrie_node {
 	bool is_priority;
 	int suffix;
 	int len;  /* Suffix length. */
-	int next_hop;
+	unsigned int next_hop;
 	struct ptrie_node *left;
 	struct ptrie_node *right;
 };
@@ -43,7 +43,7 @@ void miht_insert(struct miht *miht, struct bplus_node *bplus,
 
 void miht_load(struct miht *miht, FILE *pfxs);
 
-bool miht_lookup(const struct miht *miht, int addr, int len, int *next_hop);
+bool miht_lookup(const struct miht *miht, unsigned int addr, int len, unsigned int *next_hop);
 
 void miht_print(const struct miht *miht);
 
