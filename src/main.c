@@ -139,7 +139,7 @@ void forward(fwdtbl *fw_tbl, FILE *input_addr, unsigned long count)
 		uint32_t addr = addresses[i % len];
 
 		/* Lookup */
-		int next_hop;
+		unsigned int next_hop;
 		bool found = LOOKUP_ADDRESS(fw_tbl, addr, 32, &next_hop);
 
 #ifndef NDEBUG
