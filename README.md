@@ -25,8 +25,8 @@ $ cmake ..
 $ make
 ```
 
-This will generate a **Release** build by default, with all the optimization
-flags on. In order to generate a **Debug** build, run `cmake
+This will generate a **Debug** build by default, with all the optimization
+flags on. In order to generate a **Release** build, run `cmake
 -DCMAKE_BUILD_TYPE=Debug ..` instead. The compilation process can be followed in
 detail by running `make VERBOSE=1`. The binaries will be put in the `bin/`
 directory under the project root.
