@@ -5,6 +5,7 @@ miht
 # Directories
 build/
 bin/
+bench/res/
 
 # Files
 .o
