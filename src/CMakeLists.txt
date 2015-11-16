@@ -43,8 +43,7 @@ target_compile_definitions(miht_par PRIVATE -DLOOKUP_PARALLEL)
 
 target_link_libraries(miht_par m)
 
-option(MIC "MIC" OFF)
-if (MIC)
+if ("${CMAKE_C_COMPILER_ID}" STREQUAL "Intel")
     message(STATUS "MIC: ON")
     # Serial (MIC)
     add_executable(miht_mic
@@ -70,7 +69,5 @@ if (MIC)
     target_compile_options(miht_mic_par PRIVATE -mmic)
     target_compile_definitions(miht_mic_par PRIVATE -DLOOKUP_PARALLEL)
     target_link_libraries(miht_mic_par m -mmic)
-else()
-    message(STATUS "MIC: OFF")
 endif()
 
