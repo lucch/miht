@@ -3,7 +3,7 @@
 # Settings
 CC=icc
 PROJECT_DIR=/home/alexandrelucchesi/miht/
-PREFIXES_FILE=data/prefixes.txt
+PREFIXES_FILE=data/as6447_prefixes.txt
 IPV4_ADDRESSES_FILE=data/addresses.txt
 ALGS_SERIAL=("miht")
 ALGS_PARALLEL=("miht_par")
@@ -33,7 +33,7 @@ do
 		printf "$a, 1: "
 		printf "$a, 1" >> $OUTPUT_FILE
 
-		for e in $(seq 1 20)  # Number of times to execute.
+		for e in $(seq 1 5)  # Number of times to execute.
 		do
 			# Execute for input size 2^24 (16,777,216).
 			exec_time=$(./bin/$a -p $PREFIXES_FILE \
@@ -55,7 +55,7 @@ do
 		printf "$a, $t: "
 		printf "$a, $t" >> $OUTPUT_FILE
 
-			for e in $(seq 1 20)  # Number of times to execute.
+			for e in $(seq 1 5)  # Number of times to execute.
 			do
 				# Assure the OpenMP environment variables are set and non-empty.
 				: ${OMP_SCHEDULE:?"Need to set OMP_SCHEDULE non-empty."}
