@@ -140,7 +140,11 @@ void forward(fwdtbl *fw_tbl, FILE *input_addr, unsigned long count)
 
 		/* Lookup */
 		unsigned int next_hop;
+#ifdef BENCHMARK
+		LOOKUP_ADDRESS(fw_tbl, addr, 32, &next_hop);  /* Discard return. */
+#else
 		bool found = LOOKUP_ADDRESS(fw_tbl, addr, 32, &next_hop);
+#endif
 
 #ifndef NDEBUG
 		/* I/O. */

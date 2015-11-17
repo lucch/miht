@@ -343,21 +343,33 @@ void miht_insert(struct miht *miht, struct bplus_node *bplus,
 
 void miht_load(struct miht *miht, FILE *pfxs)
 {
-	if (pfxs == NULL) {
-		fprintf(stderr, "Couldn't load prefixes. File is NULL.\n");
-		exit(1);
-	}
+	assert(pfxs != NULL);
 
-	int rc;
 	uint8_t a0, b0, c0, d0, len;
 	uint8_t a1, b1, c1, d1;
-	while((rc = fscanf(pfxs, "%"SCNu8 ".%"SCNu8 ".%"SCNu8 ".%"SCNu8 "/%"SCNu8
-					" %"SCNu8 ".%"SCNu8 ".%"SCNu8 ".%"SCNu8,
-					&a0, &b0, &c0, &d0, &len,
-					&a1, &b1, &c1, &d1)) == 9) {
+	while(fscanf(pfxs, "%"SCNu8".%"SCNu8".%"SCNu8".%"SCNu8,
+				&a0, &b0, &c0, &d0) == 4) {
+		if (fscanf(pfxs, "/%"SCNu8, &len) != 1) {
+			len = 0;
+			if (d0 > 0)
+				len = 32;
+			else if (c0 > 0)
+				len = 24;
+			else if (b0 > 0)
+				len = 16;
+			else if (a0 > 0)
+				len = 8;
+		}
+		if(fscanf(pfxs, " %"SCNu8".%"SCNu8".%"SCNu8".%"SCNu8,
+				&a1, &b1, &c1, &d1) != 4) {
+			printf("Couldn't parse network prefix: "
+				"%"PRIu8".%"PRIu8".%"PRIu8".%"PRIu8"/%"PRIu8"\n",
+				a0, b0, c0, d0, len);
+			exit(1);
+		}
+
 		uint32_t next_hop = ip_addr(a1, b1, c1, d1);
 		struct ip_prefix pfx = ip_prefix(a0, b0, c0, d0, len, next_hop);
-
 		miht_insert(miht, miht->root1, pfx);
 	}
 }
@@ -398,7 +410,7 @@ void ptrie_printhex(const struct ptrie_node *ptrie)
 
 bool miht_lookup(const struct miht *miht, unsigned int addr, int len, unsigned int *nhop)
 {
-	unsigned int next_hop = default_route;
+	unsigned int next_hop;
 	const struct ptrie_node *ptminusone = miht->root0;
 	const struct bplus_node *bplus = miht->root1;
 	int k = miht->k;
@@ -418,7 +430,7 @@ bool miht_lookup(const struct miht *miht, unsigned int addr, int len, unsigned i
 	}
 
 	*nhop = ptrie_lookup(ptminusone, addr, len);
-	return true;
+	return *nhop == default_route && default_route == 0 ? false : true;
 }
 
 void ptrie_print(const struct ptrie_node *ptrie)
