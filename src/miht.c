@@ -35,7 +35,11 @@ struct bplus_node *bplus_node(int m, enum miht_node_type type)
 	/* Allocate extra node to ease implementation: `indices[0]` won't be
 	 * used.
 	 */
+#if defined(__MIC__)
+	bplus_node->indices = _mm_malloc(m * sizeof(int), 64);
+#else
 	bplus_node->indices = malloc(m * sizeof(int));
+#endif
 	memset(bplus_node->indices, INT_MAX, m * sizeof(int));
 	if (type == MIHT_INTERNAL) {
 		bplus_node->is_leaf = false;
@@ -62,7 +66,7 @@ struct miht *miht_create(int k, int m)
 	return miht;
 }
 
-int prefix_key(int k, unsigned int p, int len)
+static inline int prefix_key(int k, unsigned int p, int len)
 {
 	int ret = len > k ? p >> (len - k) : p;
 	return ret;
@@ -181,7 +185,7 @@ void byte_to_binary(int x, char buf[], int len)
 /*
  * prefix2 must be GREATER OR EQUAL THAN prefix1.
  */
-bool ptrie_prefix_match(int prefix1, int len1, unsigned int prefix2, int len2)
+static inline bool ptrie_prefix_match(int prefix1, int len1, unsigned int prefix2, int len2)
 {
 	if (len1 == 0)
 		return true;
@@ -191,7 +195,7 @@ bool ptrie_prefix_match(int prefix1, int len1, unsigned int prefix2, int len2)
 /*
  * pos start at 1.
  */
-bool ptrie_check_bit(int pos, unsigned int suffix, int len)
+static inline bool ptrie_check_bit(int pos, unsigned int suffix, int len)
 {
 	return len >= pos ? suffix & (1 << (len - pos)) : false;
 }
@@ -374,7 +378,7 @@ void miht_load(struct miht *miht, FILE *pfxs)
 	}
 }
 
-unsigned int ptrie_lookup(const struct ptrie_node *ptrie, unsigned int suffix, int len)
+static inline unsigned int ptrie_lookup(const struct ptrie_node *ptrie, unsigned int suffix, int len)
 {
 	unsigned int next_hop = default_route; 
 	int level = 0;

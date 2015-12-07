@@ -8,7 +8,7 @@ set(EXECUTABLE_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/bin)
 # Make 'Release' the default build type if none is specified through:
 # cmake -DCMAKE_BUILD_TYPE=(Debug|Release|...) <dir>
 if (NOT CMAKE_BUILD_TYPE) 
-	set(CMAKE_BUILD_TYPE Debug)
+	set(CMAKE_BUILD_TYPE Release)
 endif()
 
 # Generates a verbose Makefile.
