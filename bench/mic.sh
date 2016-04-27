@@ -2,22 +2,23 @@
 
 # Settings
 CC=icc
-PROJECT_DIR=/home/alexandrelucchesi/miht/ # Mounted host directory.
-PREFIXES_FILE=data/as6447_prefixes.txt
-IPV4_ADDRESSES_FILE=data/addresses.txt
+PROJECT_DIR=/home/alexandrelucchesi/miht/
+PREFIXES_FILE=/home/alexandrelucchesi/ip-datasets/ipv4/basic/as65000/bgptable/prefixes.txt
+IPV4_ADDRESSES_FILE=/home/alexandrelucchesi/ip-datasets/ipv4/addrs/matching-80.txt
 ALGS_SERIAL=("miht_mic")
 ALGS_PARALLEL=("miht_mic_par")
-THREADS=(30 60 90 120 150 180 210 240 244)
+THREADS=(30 60 90 120 150 180 210 244)
+#THREADS=(30)
 SCHED_CHUNKSIZE="dynamic,1"
-OUTPUT_FILE=bench/res/mic/lookup.csv # Benchmark output file.
+OUTPUT_FILE=bench/res-exectime/mic/lookup.csv # Benchmark output file.
 
 cd $PROJECT_DIR
-mkdir -p bench/res/mic/
+mkdir -p bench/res-exectime/mic/
 
 # Clean old data files...
-data_files=$(ls bench/res/mic)
+data_files=$(ls bench/res-exectime/mic)
 if [ ${#data_files} -gt 0 ]; then
-	rm bench/res/mic/*
+	rm -f bench/res-exectime/mic/*
 fi
 
 export LD_LIBRARY_PATH=bin
@@ -33,11 +34,10 @@ do
 		printf "$a, 1: "
 		printf "$a, 1" >> $OUTPUT_FILE
 
-		for e in $(seq 1 5)  # Number of times to execute.
+		for e in $(seq 1 3)  # Number of times to execute.
 		do
-			# Execute for input size 2^24 (16,777,216).
-			exec_time=$(./bin/$a -p $PREFIXES_FILE \
-				-r $IPV4_ADDRESSES_FILE -n 16777216)
+			# Execute for input size 2^26 (67108864).
+			exec_time=$(./bin/$a -p $PREFIXES_FILE -r $IPV4_ADDRESSES_FILE)
 
 			printf "."
 			printf ", $exec_time" >> $OUTPUT_FILE
@@ -55,15 +55,14 @@ do
 		printf "$a, $t: "
 		printf "$a, $t" >> $OUTPUT_FILE
 
-			for e in $(seq 1 5)  # Number of times to execute.
+			for e in $(seq 1 3)  # Number of times to execute.
 			do
 				# Assure the OpenMP environment variables are set and non-empty.
 				: ${OMP_SCHEDULE:?"Need to set OMP_SCHEDULE non-empty."}
 				: ${OMP_NUM_THREADS:?"Need to set OMP_NUM_THREADS non-empty."}
 
-				# Execute for input size 2^24 (16,777,216).
-				exec_time=$(./bin/$a -p $PREFIXES_FILE \
-					-r $IPV4_ADDRESSES_FILE -n 16777216)
+				# Execute for input size 2^26 (67108864).
+				exec_time=$(./bin/$a -p $PREFIXES_FILE -r $IPV4_ADDRESSES_FILE)
 
 				printf "."
 				printf ", $exec_time" >> $OUTPUT_FILE
