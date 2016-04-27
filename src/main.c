@@ -1,6 +1,4 @@
-#include <stdio.h>
-
-
+#include <assert.h>
 #include <ctype.h>
 #include <inttypes.h>
 #include <omp.h>
@@ -17,13 +15,14 @@
 /* Handy macro to perform string comparison. */
 #define STREQ(s1, s2) (strcmp((s1), (s2)) == 0)
 
-typedef struct miht fwdtbl;
+typedef struct pmiht fwdtbl;
 
 void print_usage(char *argv[])
 {
 	printf("Usage: %s -p <file1> -r <file2> [-n <count>]\n", argv[0]);
 	printf("\n");
 	printf("Options:\n");
+	printf("  -a --alfa              \t Alfa used to determine the length of the MIHTs array.\n");
 	printf("  -p --prefixes-file     \t Prefixes to initialize the forwarding table.\n");
 	printf("  -r --run-address-file  \t Forward IPv4 addresses in a dry-run fashion.\n");
 	printf("  -n --num-addresses     \t Number of addresses to forward.\n");
@@ -192,7 +191,17 @@ static inline int contains(int argc, char *argv[], const char *option)
 static void allocate_forwarding_table(int argc, char *argv[],
 		fwdtbl **fw_tbl)
 {
-	*fw_tbl = miht_create(16, 16);
+	int index;
+	int alfa = 0;
+
+	if ((index = contains(argc, argv, "--alfa")) == -1)
+		index = contains(argc, argv, "-a");
+	assert(index != -1);
+	assert(index + 1 < argc);
+
+	alfa = atoi(argv[index + 1]);
+	assert(alfa > 0 && alfa <= 32);
+	*fw_tbl = pmiht_create(16, 16, alfa);
 }
 
 /* Options: -p, --prefixes-file. */
@@ -213,7 +222,7 @@ static void initialize_forwarding_table(fwdtbl *fw_tbl, int argc,
 				exit(1);
 			}
 
-			miht_load(fw_tbl, prefixes);
+			pmiht_load(fw_tbl, prefixes);
 			fclose(prefixes);
 		}
 	}

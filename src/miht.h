@@ -31,21 +31,29 @@ struct miht {
 	struct bplus_node *root1;
 };
 
+struct pmiht {
+	int alfa;
+	size_t len;
+	struct miht **mihts; /* Array of pointers to MIHTs of len 2^{alfa} */
+};
+
 /*
  * \brief Recommended value for both \c k and \c m is 16 for IPv4.
  * \param k Length of prefix keys.
  * \param m Order of B+ tree.
  */
-struct miht *miht_create(int k, int m);
+//struct miht *miht_create(int k, int m);
 
-void miht_insert(struct miht *miht, struct bplus_node *bplus,
+struct pmiht *pmiht_create(int k, int m, int alfa);
+
+void pmiht_insert(struct miht *miht, struct bplus_node *bplus,
 		struct ip_prefix prefix);
 
-void miht_load(struct miht *miht, FILE *pfxs);
+void pmiht_load(struct pmiht *pmiht, FILE *pfxs);
 
-bool miht_lookup(const struct miht *miht, unsigned int addr, int len, unsigned int *next_hop);
+bool pmiht_lookup(const struct pmiht *miht, unsigned int addr, int len, unsigned int *next_hop);
 
-void miht_print(const struct miht *miht);
+void pmiht_print(const struct miht *miht);
 
 #endif
 

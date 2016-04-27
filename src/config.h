@@ -21,7 +21,7 @@
  *
  * Default: disable.
  */
-#define LOOKUP_ADDRESS miht_lookup
+#define LOOKUP_ADDRESS pmiht_lookup
 //#if defined(LOOKUP_VEC_AUTOVEC)
 //#define LOOKUP_ADDRESS lookup_address_autovec
 //#elif defined(LOOKUP_VEC_AUTOVEC_TWOSTEPS)

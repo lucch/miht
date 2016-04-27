@@ -55,15 +55,31 @@ struct bplus_node *bplus_node(int m, enum miht_node_type type)
 	return bplus_node;
 }
 
-struct miht *miht_create(int k, int m)
+static struct miht *miht_create(int k, int m)
 {
 	struct miht *miht = malloc(sizeof(struct miht));
+	assert(miht != NULL);
 	miht->k = k;
 	miht->m = m;
 	miht->root0 = NULL;
 	miht->root1 = bplus_node(m, MIHT_EXTERNAL);
 
 	return miht;
+}
+
+struct pmiht *pmiht_create(int k, int m, int alfa)
+{
+	assert(alfa > 0);
+	struct pmiht *pmiht = malloc(sizeof(struct pmiht *));
+	assert(pmiht != NULL);
+	pmiht->alfa = alfa;
+	pmiht->mihts = calloc(pow(2, alfa), sizeof(struct miht *));
+	assert(pmiht->mihts != NULL);
+	for (size_t i = 0; i < pow(2, alfa); i++) {
+		pmiht->mihts[i] = miht_create(k, m);
+	}
+
+	return pmiht;
 }
 
 static inline int prefix_key(int k, unsigned int p, int len)
@@ -345,7 +361,7 @@ void miht_insert(struct miht *miht, struct bplus_node *bplus,
 	}
 }
 
-void miht_load(struct miht *miht, FILE *pfxs)
+void pmiht_load(struct pmiht *pmiht, FILE *pfxs)
 {
 	assert(pfxs != NULL);
 
@@ -374,7 +390,16 @@ void miht_load(struct miht *miht, FILE *pfxs)
 
 		uint32_t next_hop = ip_addr(a1, b1, c1, d1);
 		struct ip_prefix pfx = ip_prefix(a0, b0, c0, d0, len, next_hop);
-		miht_insert(miht, miht->root1, pfx);
+		
+		if (len - pmiht->alfa < 0) {
+			printf("Couldn't parse network prefix: "
+				"%"PRIu8".%"PRIu8".%"PRIu8".%"PRIu8"/%"PRIu8"\n",
+				a0, b0, c0, d0, len);
+			exit(1);
+		}
+		assert(len - pmiht->alfa >= 0);
+		size_t index = pfx.prefix >> (len - pmiht->alfa);
+		miht_insert(pmiht->mihts[index], pmiht->mihts[index]->root1, pfx);
 	}
 }
 
@@ -412,9 +437,10 @@ void ptrie_printhex(const struct ptrie_node *ptrie)
 	}
 }
 
-bool miht_lookup(const struct miht *miht, unsigned int addr, int len, unsigned int *nhop)
+bool pmiht_lookup(const struct pmiht *pmiht, unsigned int addr, int len, unsigned int *nhop)
 {
 	unsigned int next_hop;
+	const struct miht *miht = pmiht->mihts[addr >> (len - pmiht->alfa)];
 	const struct ptrie_node *ptminusone = miht->root0;
 	const struct bplus_node *bplus = miht->root1;
 	int k = miht->k;
