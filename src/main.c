@@ -32,7 +32,7 @@ void print_usage(char *argv[])
 /*
  * Return the number of addresses read.
  */
-static unsigned long read_addresses(FILE *input_addr, uint32_t **addresses)
+static unsigned long read_addresses(FILE *input_addr, uint128 **addresses)
 {
 	if (input_addr == NULL) {
 		fprintf(stderr, "main.read_addresses: 'input_addr' is NULL.\n");
@@ -41,23 +41,26 @@ static unsigned long read_addresses(FILE *input_addr, uint32_t **addresses)
 
 	unsigned long len;
 	int rc = fscanf(input_addr, "%lu", &len);
-	
-	*addresses = malloc(len * sizeof(uint32_t));
+
+#if defined(__MIC__)
+	*addresses = _mm_malloc(len * sizeof(uint128), 64);
+#else
+	*addresses = malloc(len * sizeof(uint128));
+#endif
 	if (addresses == NULL) {
 		fprintf(stderr, "main.read_addresses: Could not malloc addresses.\n");
 		exit(1);
 	}
 
 	if (rc == 1) {
-		uint8_t a, b, c, d;
+		unsigned int a, b, c, d, e, f, g, h;
 		for (unsigned long i = 0; i < len; i++) {
-			if (fscanf(input_addr,
-				"%" SCNu8 ".%" SCNu8 ".%" SCNu8 ".%" SCNu8,
-				&a, &b, &c, &d) != 4) {
-				fprintf(stderr, "main.forward: fscanf error.\n");
+			if (fscanf(input_addr, "%x:%x:%x:%x:%x:%x:%x:%x",
+				&a, &b, &c, &d, &e, &f, &g, &h) != 8) {
+				fprintf(stderr, "main.read_addresses: fscanf error.\n");
 				exit(1);
 			}
-			(*addresses)[i] = ip_addr(a, b, c, d);
+			(*addresses)[i] = ip_addr(a, b, c, d, e, f, g, h);
 		}
 	}
 
@@ -81,7 +84,7 @@ void forward(fwdtbl *fw_tbl, FILE *input_addr, unsigned long count)
 		exit(1);
 	}
 
-	uint32_t *addresses = NULL;
+	uint128 *addresses = NULL;
 	unsigned long len = read_addresses(input_addr, &addresses);
 	if (count == 0)
 		count = len;
@@ -101,8 +104,8 @@ void forward(fwdtbl *fw_tbl, FILE *input_addr, unsigned long count)
 #endif
 
 #ifndef NDEBUG
-	char addr_str[16];
-	char next_hop_str[16];
+	char addr_str[40];
+	char next_hop_str[40];
 
 #ifdef LOOKUP_PARALLEL
   #pragma omp single
@@ -136,14 +139,14 @@ void forward(fwdtbl *fw_tbl, FILE *input_addr, unsigned long count)
 #endif
 	for (unsigned long i = 0; i < count; i++) {
 		/* Decode address. */
-		uint32_t addr = addresses[i % len];
+		uint128 addr = addresses[i % len];
 
 		/* Lookup */
-		unsigned int next_hop;
+		uint128 next_hop;
 #ifdef BENCHMARK
-		LOOKUP_ADDRESS(fw_tbl, addr, 32, &next_hop);  /* Discard return. */
+		LOOKUP_ADDRESS(fw_tbl, addr, &next_hop);  /* Discard return. */
 #else
-		bool found = LOOKUP_ADDRESS(fw_tbl, addr, 32, &next_hop);
+		bool found = LOOKUP_ADDRESS(fw_tbl, addr, &next_hop);
 #endif
 
 #ifndef NDEBUG
@@ -192,7 +195,7 @@ static inline int contains(int argc, char *argv[], const char *option)
 static void allocate_forwarding_table(int argc, char *argv[],
 		fwdtbl **fw_tbl)
 {
-	*fw_tbl = miht_create(16, 16);
+	*fw_tbl = miht_create(32, 32);
 }
 
 /* Options: -p, --prefixes-file. */

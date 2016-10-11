@@ -9,7 +9,7 @@
  */
 char *strpfx(const struct ip_prefix *pfx);
 
-void straddr(uint32_t addr, char *str);
+void straddr(uint128 addr, char *str);
 
 #endif
 

@@ -7,9 +7,9 @@
 
 struct ptrie_node {
 	bool is_priority;
-	int suffix;
+	uint64_t suffix;
 	int len;  /* Suffix length. */
-	unsigned int next_hop;
+	uint128 next_hop;
 	struct ptrie_node *left;
 	struct ptrie_node *right;
 };
@@ -17,7 +17,7 @@ struct ptrie_node {
 struct bplus_node {
 	bool is_leaf;
 	int num_indices;  /* t(u) */
-	int *indices;  /* 1 <= i <= m - 1 */
+	uint64_t *indices;  /* 1 <= i <= m - 1 */
 	union {
 		struct bplus_node **children;  /* 0 <= i <= m - 1 */
 		struct ptrie_node **data;  /* 1 <= i <= m - 1 */
@@ -43,7 +43,7 @@ void miht_insert(struct miht *miht, struct bplus_node *bplus,
 
 void miht_load(struct miht *miht, FILE *pfxs);
 
-bool miht_lookup(const struct miht *miht, unsigned int addr, int len, unsigned int *next_hop);
+bool miht_lookup(const struct miht *miht, uint128 addr, uint128 *next_hop);
 
 void miht_print(const struct miht *miht);
 
