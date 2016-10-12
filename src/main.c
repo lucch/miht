@@ -175,7 +175,11 @@ void forward(fwdtbl *fw_tbl, FILE *input_addr, unsigned long count)
 	printf("%lf", exec_time);
 #endif
 
+#if defined(__MIC__)
+	_mm_free(addresses);
+#else
 	free(addresses);
+#endif
 }
 
 static inline int contains(int argc, char *argv[], const char *option)

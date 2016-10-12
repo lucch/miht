@@ -20,7 +20,7 @@ else()
 endif()
 
 # Serial (CPU)
-add_executable(miht
+add_executable(miht-v6
     main.c
     ip.c
     ip.h
@@ -28,10 +28,10 @@ add_executable(miht
     prettyprint.c
 )
 
-target_link_libraries(miht m)
+target_link_libraries(miht-v6 m)
 
 # Parallel (CPU)
-add_executable(miht_par
+add_executable(miht-v6_par
     main.c
     ip.c
     ip.h
@@ -39,14 +39,14 @@ add_executable(miht_par
     prettyprint.c
 )
 
-target_compile_definitions(miht_par PRIVATE -DLOOKUP_PARALLEL)
+target_compile_definitions(miht-v6_par PRIVATE -DLOOKUP_PARALLEL)
 
-target_link_libraries(miht_par m)
+target_link_libraries(miht-v6_par m)
 
 if ("${CMAKE_C_COMPILER_ID}" STREQUAL "Intel")
     message(STATUS "MIC: ON")
     # Serial (MIC)
-    add_executable(miht_mic
+    add_executable(miht-v6_mic
         main.c
         ip.c
         ip.h
@@ -54,11 +54,11 @@ if ("${CMAKE_C_COMPILER_ID}" STREQUAL "Intel")
         prettyprint.c
     )
 
-    target_compile_options(miht_mic PRIVATE -mmic)
-    target_link_libraries(miht_mic m -mmic)
+    target_compile_options(miht-v6_mic PRIVATE -mmic)
+    target_link_libraries(miht-v6_mic m -mmic)
 
     # Parallel (MIC)
-    add_executable(miht_mic_par
+    add_executable(miht-v6_mic_par
         main.c
         ip.c
         ip.h
@@ -66,8 +66,8 @@ if ("${CMAKE_C_COMPILER_ID}" STREQUAL "Intel")
         prettyprint.c
     )
 
-    target_compile_options(miht_mic_par PRIVATE -mmic)
-    target_compile_definitions(miht_mic_par PRIVATE -DLOOKUP_PARALLEL)
-    target_link_libraries(miht_mic_par m -mmic)
+    target_compile_options(miht-v6_mic_par PRIVATE -mmic)
+    target_compile_definitions(miht-v6_mic_par PRIVATE -DLOOKUP_PARALLEL)
+    target_link_libraries(miht-v6_mic_par m -mmic)
 endif()
 
