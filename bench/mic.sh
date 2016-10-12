@@ -3,23 +3,22 @@
 # Settings
 CC=icc
 PROJECT_DIR=/home/alexandrelucchesi/miht/ # Mounted host directory.
-PREFIXES_FILE=data/as6447_prefixes.txt
-IPV4_ADDRESSES_FILE=data/addresses.txt
-#ALGS_SERIAL=("miht_mic")
-ALGS_PARALLEL=("miht_mic_par")
-#THREADS=(30 60 90 120 150 180 210 240 244)
-#THREADS=(30 60 90 120 150 180 210 244)
-THREADS=(30)
+PREFIXES_FILE=/home/alexandrelucchesi/ip-datasets/ipv6/basic/as65000/prefixes.txt
+ADDRS_FILE=/home/alexandrelucchesi/ip-datasets/ipv6/randomAddrs.txt
+ALGS_SERIAL=("miht-v6_mic")
+ALGS_PARALLEL=("miht-v6_mic_par")
+THREADS=(30 60 90 120 150 180 210 244)
+#THREADS=(30)
 SCHED_CHUNKSIZE="dynamic,1"
-OUTPUT_FILE=bench/res/mic/lookup.csv # Benchmark output file.
+OUTPUT_FILE=bench/res-v6-exectime/mic/lookup.csv # Benchmark output file.
 
 cd $PROJECT_DIR
-mkdir -p bench/res/mic/
+mkdir -p bench/res-v6-exectime/mic/
 
 # Clean old data files...
-data_files=$(ls bench/res/mic)
+data_files=$(ls bench/res-v6-exectime/mic)
 if [ ${#data_files} -gt 0 ]; then
-	rm -f bench/res/mic/*
+	rm -f bench/res-v6-exectime/mic/*
 fi
 
 export LD_LIBRARY_PATH=bin
@@ -38,8 +37,7 @@ do
 		for e in $(seq 1 3)  # Number of times to execute.
 		do
 			# Execute for input size 2^26 (67108864).
-			exec_time=$(./bin/$a -p $PREFIXES_FILE \
-				-r $IPV4_ADDRESSES_FILE -n 67108864)
+			exec_time=$(./bin/$a -p $PREFIXES_FILE -r $ADDRS_FILE)
 
 			printf "."
 			printf ", $exec_time" >> $OUTPUT_FILE
@@ -64,8 +62,7 @@ do
 				: ${OMP_NUM_THREADS:?"Need to set OMP_NUM_THREADS non-empty."}
 
 				# Execute for input size 2^26 (67108864).
-				exec_time=$(./bin/$a -p $PREFIXES_FILE \
-					-r $IPV4_ADDRESSES_FILE -n 67108864)
+				exec_time=$(./bin/$a -p $PREFIXES_FILE -r $ADDRS_FILE)
 
 				printf "."
 				printf ", $exec_time" >> $OUTPUT_FILE

@@ -2,23 +2,23 @@
 
 # Settings
 CC=icc
-PROJECT_DIR=/home/alexandrelucchesi/Development/c/miht/
-PREFIXES_FILE=data/as6447_prefixes.txt
-IPV4_ADDRESSES_FILE=data/addresses3.txt
-#ALGS_SERIAL=("miht")
-ALGS_PARALLEL=("miht_par")
-#THREADS=(4 8 12 16 20 24 28 32)
-THREADS=(32)
+PROJECT_DIR=/home/alexandrelucchesi/Development/miht/
+PREFIXES_FILE=/home/alexandrelucchesi/Development/ip-datasets/ipv6/basic/as65000/prefixes.txt
+ADDRS_FILE=/home/alexandrelucchesi/Development/ip-datasets/ipv6/randomAddrs.txt
+ALGS_SERIAL=("miht-v6")
+ALGS_PARALLEL=("miht-v6_par")
+THREADS=(2 4 8 12 16 20 24 28 32)
+#THREADS=(32)
 SCHED_CHUNKSIZE="dynamic,1"
-OUTPUT_FILE=bench/res/cpu/lookup.csv # Benchmark output file.
+OUTPUT_FILE=bench/res-v6-exectime/cpu/lookup.csv # Benchmark output file.
 
 cd $PROJECT_DIR
-mkdir -p bench/res/cpu/
+mkdir -p bench/res-v6-exectime/cpu/
 
 # Clean old data files...
-data_files=$(ls bench/res/cpu)
+data_files=$(ls bench/res-v6-exectime/cpu)
 if [ ${#data_files} -gt 0 ]; then
-	rm -f bench/res/cpu/*
+	rm -f bench/res-v6-exectime/cpu/*
 fi
 
 
@@ -36,9 +36,7 @@ do
 
 		for e in $(seq 1 3)  # Number of times to execute.
 		do
-			# Execute for input size 2^26 (67108864).
-			exec_time=$(./bin/$a -p $PREFIXES_FILE \
-				-r $IPV4_ADDRESSES_FILE -n 67108864)
+			exec_time=$(./bin/$a -p $PREFIXES_FILE -r $ADDRS_FILE)
 
 			printf "."
 			printf ", $exec_time" >> $OUTPUT_FILE
@@ -63,8 +61,7 @@ do
 				: ${OMP_NUM_THREADS:?"Need to set OMP_NUM_THREADS non-empty."}
 
 				# Execute for input size 2^26 (67108864).
-				exec_time=$(./bin/$a -p $PREFIXES_FILE \
-					-r $IPV4_ADDRESSES_FILE -n 67108864)
+				exec_time=$(./bin/$a -p $PREFIXES_FILE -r $ADDRS_FILE)
 
 				printf "."
 				printf ", $exec_time" >> $OUTPUT_FILE
