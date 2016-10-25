@@ -273,7 +273,7 @@ void ptrie_insert(struct ptrie_node **ptrie, uint64_t suffix, int len, uint128 n
 	}
 }
 
-static inline int miht_bsearch(uint64_t *indices, int len, int pkey)
+static inline int miht_bsearch(uint64_t *indices, int len, uint64_t pkey)
 {
 	int low = 0;
 	int high = len - 1;
@@ -299,7 +299,7 @@ void miht_insert(struct miht *miht, struct bplus_node *bplus,
 	int m = miht->m;
 
 	if (prefix.len >= k) {
-		if (miht->root1->num_indices == m - 1) { // NAO ENTRA AQUI
+		if (miht->root1->num_indices == m - 1) {
 			struct bplus_node *new_root = bplus_node(m, MIHT_INTERNAL);
 			new_root->children[0] = miht->root1;
 			miht->root1 = new_root;
@@ -362,8 +362,11 @@ void miht_load(struct miht *miht, FILE *pfxs)
 
 	while (fscanf(pfxs, "%x:%x:%x:%x:%x:%x:%x:%x/%hhu\n",
 				&a0, &b0, &c0, &d0, &e0, &f0, &g0, &h0, &len) == 9) {
-		assert(fscanf(pfxs, "%x:%x:%x:%x:%x:%x:%x:%x",
-				&a1, &b1, &c1, &d1, &e1, &f1, &g1, &h1) == 8);
+		if (fscanf(pfxs, "%x:%x:%x:%x:%x:%x:%x:%x",
+				&a1, &b1, &c1, &d1, &e1, &f1, &g1, &h1) != 8) {
+			fprintf(stderr, "miht_load.fscanf error!\n");
+			exit(1);
+		}
 		if (len > 64) {  /* Only prefixes up to 64 bits are allowed. */
 			if (ignored++ == 0)
 				printf("Ignored prefixes:\n");
@@ -458,8 +461,23 @@ void ptrie_print(const struct ptrie_node *ptrie)
 	}
 }
 
+void miht_print_prime(const struct bplus_node *bplus, int level)
+{
+	for (int i = 1; i <= bplus->num_indices; i++) {
+		for (int j = 0; j < level; j++)
+			printf("\t");
+		printf("0x%x\n", (unsigned int)bplus->indices[i]);
+	}
+	printf("\n");
+	if (!bplus->is_leaf)
+		for (int i = 0; i <= bplus->num_indices; i++) {
+			miht_print_prime(bplus->children[i], level + 1);
+		}
+}
+
 void miht_print(const struct miht *miht)
 {
-	printf("Not implemented yet!\n");
+	miht_print_prime(miht->root1, 0);
 }
+
 

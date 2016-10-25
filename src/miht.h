@@ -31,6 +31,11 @@ struct miht {
 	struct bplus_node *root1;
 };
 
+//extern unsigned long long bplus_only_count;
+//
+//extern unsigned long long pt_count;
+
+
 /*
  * \brief Recommended value for both \c k and \c m is 16 for IPv4.
  * \param k Length of prefix keys.
